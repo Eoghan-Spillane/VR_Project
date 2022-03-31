@@ -143,3 +143,5 @@ PackageBackups/
 
 # UWP builds
 /UWP/*
+.plastic/plastic.wktree
+.plastic/plastic.changes
