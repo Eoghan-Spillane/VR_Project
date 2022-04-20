@@ -1,13 +1,31 @@
 using System.Collections;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 using TMPro;
 
+//https://www.delftstack.com/howto/csharp/shuffle-a-list-in-csharp/
+// Fisher-Yates Shuffling Algorithm
+static class ExtensionClass{
+    private static System.Random rng = new System.Random();
+    public static void Shuffle<T>(this IList<T> list)
+        {
+            int n = list.Count;
+            while (n > 1)
+            {
+                n--;
+                int k = rng.Next(n + 1);
+                T value = list[k];
+                list[k] = list[n];
+                list[n] = value;
+            }
+        } 
+}
 
 public class GridSpawner : MonoBehaviour
 {   
 
-    public TextMeshProUGUI objectTotalSelectorText,yellowSliderText, redSliderText;
+    public TextMeshProUGUI objectTotalSelectorText,yellowSliderText, redSliderText, totalObjectsLoaded;
     public UnityEngine.UI.Slider totalObjectSlider, yellowSlider, redSlider;
     public TextMeshProUGUI bluePercentage, yellowPercentage, redPercentage;
 
@@ -15,19 +33,23 @@ public class GridSpawner : MonoBehaviour
     private int totalCount, yellowTotal, redTotal;
     public GameObject[] objectsToSpawn;
     public Vector3 gridOrigin = Vector3.zero;
-    private float pollingTime = 1f;
-    private float time;
     private int objectCount;
+    public UnityEngine.UI.Toggle shuffle;
 
-    void Update(){
-        // Count the objects
-        time += Time.deltaTime;
+    
+    public void Start() {
+        totalObjectSlider.onValueChanged.AddListener(delegate {updateGUI();});
+        yellowSlider.onValueChanged.AddListener(delegate {updateGUI();});
+        redSlider.onValueChanged.AddListener(delegate {updateGUI();});
+    }
 
-        // If it's been 1 second, update total object text count
-        if(time >= pollingTime) {
-            //Slider Positons
+    public void updateGUI(){
+            yellowSlider.maxValue = 100 - redSlider.value;
+            redSlider.maxValue = 100 - yellowSlider.value;
+
+
             yellowSliderText.text = "Yellow Slider: " + yellowSlider.value.ToString();
-            redSliderText.text = "Yellow Slider: " + redSlider.value.ToString();
+            redSliderText.text = "Red Slider: " + redSlider.value.ToString();
 
             //Total of each type
             if ((int)totalObjectSlider.value <= 1000){
@@ -47,24 +69,22 @@ public class GridSpawner : MonoBehaviour
             }
 
             blueRemaining = totalCount - (yellowTotal + redTotal);
+    
             bluePercentage.text = blueRemaining + " (" + Mathf.RoundToInt( (blueRemaining * 100) / totalCount) +"%)";
             yellowPercentage.text = yellowTotal + " (" + Mathf.RoundToInt( (yellowTotal * 100) / totalCount) +"%)";
             redPercentage.text = redTotal + " (" + Mathf.RoundToInt( (redTotal * 100) / totalCount) +"%)"; 
+            
             objectTotalSelectorText.text = "Total Object Slider (Blue by default): " + totalCount;
-
-            time -= pollingTime;
-        }
     }
 
     private List<GameObject> spawnedObjects = new List<GameObject>();
     private int gridX, gridZ;
     private float gridSpacing = 1f;
     private int sideOfGrid;
+    private int shuffleCount;
+    private List<Vector3> shuffledObjects;
 
     public void spawnGrid(){
-        Debug.Log("Spawn Grid");
-        Debug.Log(totalObjectSlider.value.ToString() + " / " + yellowSlider.value.ToString() + " / " + redSlider.value.ToString());
-
         if (totalObjectSlider.value <= 1000){
             totalCount = Mathf.FloorToInt(((int)totalObjectSlider.value) / 10) * 10;
 
@@ -96,12 +116,36 @@ public class GridSpawner : MonoBehaviour
         // Clear Objects First
         despawn();
 
-        for (int x = 0; x < gridX; x++){
-            for(int z = 0; z < gridZ; z++){
-                Vector3 spawnPosition = new Vector3(x * gridSpacing, 0, z * gridSpacing) + gridOrigin;
+        if (shuffle.isOn){
+            shuffleCount = 0;
+            shuffledObjects = new List<Vector3>();
+            
+
+            for (int x = 0; x < gridX; x++){
+                for(int z = 0; z < gridZ; z++){
+                    shuffleCount++;
+                    Vector3 spawnPosition = new Vector3(x * gridSpacing, 0, z * gridSpacing) + gridOrigin;
+                    shuffledObjects.Add(spawnPosition);
+                }
+            }
+
+            shuffledObjects.Shuffle();
+
+            foreach(Vector3 spawnPosition in shuffledObjects){
                 spawnObject(spawnPosition, Quaternion.identity);
             }
         }
+        else if(!shuffle.isOn){
+            for (int x = 0; x < gridX; x++){
+                for(int z = 0; z < gridZ; z++){
+                    Vector3 spawnPosition = new Vector3(x * gridSpacing, 0, z * gridSpacing) + gridOrigin;
+                    spawnObject(spawnPosition, Quaternion.identity);
+                }
+            }
+        }
+    
+
+        totalObjectsLoaded.text = "Objects in Scene: " + spawnedObjects.Count;
     }
 
     void spawnObject(Vector3 positionToSpawn, Quaternion rotationToSpawn){
@@ -129,5 +173,6 @@ public class GridSpawner : MonoBehaviour
            Destroy(objectete);
        } 
        objectCount = 0;
+       spawnedObjects = new List<GameObject>();
     }
 }
