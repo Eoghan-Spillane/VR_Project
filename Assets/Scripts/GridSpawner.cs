@@ -4,23 +4,6 @@ using System;
 using UnityEngine;
 using TMPro;
 
-//https://www.delftstack.com/howto/csharp/shuffle-a-list-in-csharp/
-// Fisher-Yates Shuffling Algorithm
-static class ExtensionClass{
-    private static System.Random rng = new System.Random();
-    public static void Shuffle<T>(this IList<T> list)
-        {
-            int n = list.Count;
-            while (n > 1)
-            {
-                n--;
-                int k = rng.Next(n + 1);
-                T value = list[k];
-                list[k] = list[n];
-                list[n] = value;
-            }
-        } 
-}
 
 public class GridSpawner : MonoBehaviour
 {   
@@ -83,6 +66,7 @@ public class GridSpawner : MonoBehaviour
     private int sideOfGrid;
     private int shuffleCount;
     private List<Vector3> shuffledObjects;
+    private System.Random rand = new System.Random();
 
     public void spawnGrid(){
         if (totalObjectSlider.value <= 1000){
@@ -120,7 +104,6 @@ public class GridSpawner : MonoBehaviour
             shuffleCount = 0;
             shuffledObjects = new List<Vector3>();
             
-
             for (int x = 0; x < gridX; x++){
                 for(int z = 0; z < gridZ; z++){
                     shuffleCount++;
@@ -129,8 +112,20 @@ public class GridSpawner : MonoBehaviour
                 }
             }
 
-            shuffledObjects.Shuffle();
+            // The Knuth-Fisher–Yates shuffle, as implemented by Durstenfeld
+            // https://blog.codinghorror.com/the-danger-of-naivete/
+            // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
+            // Shuffles array without have to make a copy
+            for (int i = shuffledObjects.Count - 1; i > 0; i--){
+                int n =  rand.Next(i + 1); //Pick random index out of remainder
 
+                // Swap the randomly chosen one with the last in array
+                var t = shuffledObjects[i];
+                shuffledObjects[i] = shuffledObjects[n];
+                shuffledObjects[n] = t;
+            }
+
+            // Spawn Objects but using shuffled locations in grid
             foreach(Vector3 spawnPosition in shuffledObjects){
                 spawnObject(spawnPosition, Quaternion.identity);
             }
